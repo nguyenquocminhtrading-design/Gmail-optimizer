@@ -1,4 +1,4 @@
-# WSGI / ASGI deployment configuration for PythonAnywhere
+# WSGI deployment configuration for PythonAnywhere (FastAPI via a2wsgi)
 import sys
 import os
 
@@ -7,4 +7,10 @@ path = os.path.dirname(os.path.abspath(__file__))
 if path not in sys.path:
     sys.path.insert(0, path)
 
-from main import app as application
+from main import app
+
+try:
+    from a2wsgi import ASGIMiddleware
+    application = ASGIMiddleware(app)
+except ImportError:
+    application = app

@@ -12,3 +12,4 @@ python-dateutil>=2.9.0
 beautifulsoup4>=4.12.3
 google-genai>=0.1.1
 pytest>=8.0.2
+a2wsgi>=1.10.0
