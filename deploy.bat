@@ -1,46 +1,118 @@
 @echo off
-echo ==============================================
-echo  TELEGRAM FINANCE BOT - AUTO DEPLOY SCRIPT
-echo ==============================================
+chcp 65001 > nul
+echo ========================================================
+echo  GMAIL INTELLIGENCE SYSTEM - GITHUB DEPLOYMENT SCRIPT
+echo ========================================================
+echo.
 
-if exist .git goto deploy
+:: 1. Lay ten thu muc va tao URL repo GitHub tu dong
+for %%I in ("%CD%") do set "DIR_NAME=%%~nxI"
+set "REPO_NAME=%DIR_NAME: =-%"
+set "GITHUB_USER=nguyenquocminhtrading-design"
+set "TARGET_URL=https://github.com/%GITHUB_USER%/%REPO_NAME%.git"
 
-echo [0/4] Khoi tao Git repository lan dau...
-git init
-git branch -M main
+echo [1/5] Thong tin Repository:
+echo     Thu muc hien tai : %DIR_NAME%
+echo     Ten Repo GitHub  : %REPO_NAME%
+echo     URL GitHub       : %TARGET_URL%
+echo.
+
+:: 2. Kiem tra .gitignore
+if not exist .gitignore (
+    echo [2/5] Tao .gitignore de bao ve secrets...
+    (
+        echo .env
+        echo credentials.json
+        echo token.json
+        echo *.db
+        echo __pycache__/
+        echo .pytest_cache/
+        echo .venv/
+    ) > .gitignore
+    echo     .gitignore da duoc tao.
+) else (
+    echo [2/5] .gitignore da ton tai - bo qua.
+)
+
+:: 3. Khoi tao Git repo neu chua co
+if not exist .git (
+    echo [3/5] Khoi tao Git repository...
+    git init
+    if errorlevel 1 (
+        echo [LOI] Loi khi khoi tao git.
+        pause
+        exit /b 1
+    )
+    git branch -M main
+) else (
+    echo [3/5] Git repository da ton tai - bo qua.
+)
+
+:: 4. Kiem tra va thiet lap remote origin tu dong
+echo [4/5] Kiem tra va cap nhat remote origin...
+git remote get-url origin >nul 2>&1
+if errorlevel 1 (
+    git remote add origin %TARGET_URL%
+    if errorlevel 1 (
+        echo [LOI] Loi khi them remote origin.
+        pause
+        exit /b 1
+    )
+    echo [OK] Da them remote origin: %TARGET_URL%
+) else (
+    git remote set-url origin %TARGET_URL%
+    echo [OK] Remote origin da duoc cap nhat: %TARGET_URL%
+)
+
+:: 5. Add, Commit va Push
+echo.
+echo [5/5] Them file vao Git staging va day len GitHub...
 git add .
-git commit -m "Initial commit"
+if errorlevel 1 (
+    echo [LOI] Loi khi git add.
+    pause
+    exit /b 1
+)
 
-echo [1/4] Dang tao GitHub repository tu dong qua GitHub CLI...
-for %%I in (.) do set RepoName=%%~nxI
-echo Ten repository se tao: %RepoName%
+:: Kiem tra co gi de commit khong
+git diff --cached --quiet
+if not errorlevel 1 (
+    echo [INFO] Khong co thay doi moi de commit. Bo qua commit.
+    goto :push
+)
 
-gh repo create %RepoName% --private --source=. --remote=origin --push
+set /p commitMsg="Nhap commit message (Enter de dung mac dinh 'Auto update'): "
+if not defined commitMsg set "commitMsg=Auto update %REPO_NAME%"
 
-echo ==============================================
-echo [Thanh cong] Da khoi tao va day code len GitHub repository: %RepoName%!
-goto finish
-
-:deploy
-echo [1/3] Adding files to Git...
-git add .
-git reset .env 2>nul
-
-set /p commitMsg="Enter commit message (or press Enter for default 'Auto deploy update'): "
-if "%commitMsg%"=="" set commitMsg=Auto deploy update
-
-echo [2/3] Committing changes...
 git commit -m "%commitMsg%"
+if errorlevel 1 (
+    echo [LOI] Loi khi commit.
+    pause
+    exit /b 1
+)
 
-echo [3/3] Pushing to GitHub...
-git push origin main
+:push
+echo.
+echo Day code len GitHub (branch: main)...
+git push -u origin main
+if errorlevel 1 (
+    echo.
+    echo ========================================================
+    echo [THAT BAI] Push that bai! Thu cac cau lenh sau:
+    echo   1. Neu branch chua ton tai tren remote:
+    echo      git push --set-upstream origin main
+    echo   2. Neu bi conflict voi remote:
+    echo      git pull --rebase origin main
+    echo   3. Kiem tra quyen truy cap repo: %TARGET_URL%
+    echo ========================================================
+    pause
+    exit /b 1
+)
 
-:finish
-echo ==============================================
-echo Deploy script finished!
-echo Now, to update PythonAnywhere:
-echo 1. Go to your PythonAnywhere bash console.
-echo 2. Run: cd telegram-finance-bot ^&^& git pull
-echo 3. Go to Web tab and click "Reload".
-echo ==============================================
+echo.
+echo ========================================================
+echo [THANH CONG] Da day len GitHub!
+echo URL Repo: %TARGET_URL%
+echo ========================================================
+
 pause
