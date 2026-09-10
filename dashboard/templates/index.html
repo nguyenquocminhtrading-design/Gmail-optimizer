@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gmail Intelligence Dashboard</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="brand">
+                <div class="brand-icon">G</div>
+                <div>
+                    <h1>Gmail Intelligence System</h1>
+                    <p style="font-size: 0.85rem; color: var(--text-muted);">Local-First Interactive Classification & Decision Engine</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                {% if is_dry_run %}
+                <span class="badge-status badge-dryrun">⚠️ DRY RUN MODE ACTIVE</span>
+                {% else %}
+                <span class="badge-status" style="background: rgba(16,185,129,0.2); color: var(--accent-emerald);">LIVE GMAIL SYNC</span>
+                {% endif %}
+                <button id="syncBtn" class="btn-primary">Sync Gmail Now 🔄</button>
+            </div>
+        </header>
+
+        <!-- Stats Overview Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-title">Total Processed</div>
+                <div class="stat-value" id="statTotal">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Important Today</div>
+                <div class="stat-value important" id="statImportant">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Action Required</div>
+                <div class="stat-value action" id="statAction">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Urgent</div>
+                <div class="stat-value urgent" id="statUrgent">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Needs Your Decision</div>
+                <div class="stat-value review" id="statReview">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Upcoming Deadlines</div>
+                <div class="stat-value" style="color: var(--accent-amber);" id="statDeadlines">-</div>
+            </div>
+        </div>
+
+        <!-- Section 1: Interactive Review Queue -->
+        <div class="queue-section">
+            <div class="section-title">
+                <span>🤔</span> Needs Your Decision & Preference Teaching
+            </div>
+            <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1.5rem;">
+                Emails where prediction confidence is below {{ confidence_threshold * 100 }}%. Review and teach the system your preferences.
+            </p>
+
+            <div id="reviewQueueContainer">
+                <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                    Loading review queue...
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 2: Today's Priorities -->
+        <div class="queue-section">
+            <div class="section-title">
+                <span>🔥</span> Today's Top Priorities & Important Emails
+            </div>
+            <div id="todayImportantContainer">
+                <div style="text-align: center; padding: 1.5rem; color: var(--text-muted);">
+                    Loading today's important emails...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

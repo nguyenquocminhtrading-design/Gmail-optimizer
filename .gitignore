@@ -1,0 +1,24 @@
+# Environment & Secrets
+.env
+credentials.json
+token.json
+
+# SQLite Database & Logs
+*.db
+*.log
+logs/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.venv/
+venv/
+ENV/
+
+# IDE & OS Files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
