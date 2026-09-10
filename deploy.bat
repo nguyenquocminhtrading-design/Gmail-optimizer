@@ -5,7 +5,7 @@ echo  GMAIL INTELLIGENCE SYSTEM - GITHUB DEPLOYMENT SCRIPT
 echo ========================================================
 echo.
 
-:: 1. Lay ten thu muc va tao URL repo GitHub tu dong
+:: 1. Lay ten thu muc lam ten repo
 for %%I in ("%CD%") do set "DIR_NAME=%%~nxI"
 set "REPO_NAME=%DIR_NAME: =-%"
 set "GITHUB_USER=nguyenquocminhtrading-design"
@@ -48,20 +48,28 @@ if not exist .git (
     echo [3/5] Git repository da ton tai - bo qua.
 )
 
-:: 4. Kiem tra va thiet lap remote origin tu dong
-echo [4/5] Kiem tra va cap nhat remote origin...
-git remote get-url origin >nul 2>&1
+:: 4. Kiem tra va tao Repo tren GitHub qua gh CLI neu chua co
+echo [4/5] Kiem tra repository tren GitHub...
+gh repo view %GITHUB_USER%/%REPO_NAME% >nul 2>&1
 if errorlevel 1 (
-    git remote add origin %TARGET_URL%
+    echo [INFO] Repo %GITHUB_USER%/%REPO_NAME% chua ton tai tren GitHub. Dang tu dong tao...
+    gh repo create %GITHUB_USER%/%REPO_NAME% --public
     if errorlevel 1 (
-        echo [LOI] Loi khi them remote origin.
+        echo [LOI] Khong the tao repo tren GitHub qua gh CLI.
         pause
         exit /b 1
     )
-    echo [OK] Da them remote origin: %TARGET_URL%
+    echo [OK] Da tao repo %GITHUB_USER%/%REPO_NAME% tren GitHub.
+) else (
+    echo [OK] Repo %GITHUB_USER%/%REPO_NAME% da ton tai tren GitHub.
+)
+
+:: Thiet lap hoac cap nhat remote origin
+git remote get-url origin >nul 2>&1
+if errorlevel 1 (
+    git remote add origin %TARGET_URL%
 ) else (
     git remote set-url origin %TARGET_URL%
-    echo [OK] Remote origin da duoc cap nhat: %TARGET_URL%
 )
 
 :: 5. Add, Commit va Push
@@ -103,7 +111,6 @@ if errorlevel 1 (
     echo      git push --set-upstream origin main
     echo   2. Neu bi conflict voi remote:
     echo      git pull --rebase origin main
-    echo   3. Kiem tra quyen truy cap repo: %TARGET_URL%
     echo ========================================================
     pause
     exit /b 1
