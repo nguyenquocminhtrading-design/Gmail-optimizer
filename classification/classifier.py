@@ -10,6 +10,7 @@ from processing.attachments import classify_attachment
 from classification.rules import evaluate_rules
 from classification.heuristic import classify_heuristically
 from classification.llm_engine import analyze_with_gemini
+from classification.label_map import target_labels_for
 from typing import Dict, Any
 
 def process_and_classify_email(db: Session, email_data: dict) -> dict:
@@ -103,23 +104,9 @@ def process_and_classify_email(db: Session, email_data: dict) -> dict:
     }
     EmailRepository.save_classification(db, email_obj.id, classification_entry)
 
-    # Required Gmail Label namespace
-    target_labels = []
-    if final_priority == "URGENT":
-        target_labels.append("AI/Urgent")
-    elif final_priority == "IMPORTANT":
-        target_labels.append("AI/Important")
-    elif final_priority == "LOW_PRIORITY":
-        target_labels.append("AI/Low Priority")
-
-    if final_action == "ACTION_REQUIRED":
-        target_labels.append("AI/Action Required")
-
-    if final_category in ["CAREER", "FINANCE", "UNIVERSITY", "WORK", "NEWSLETTER"]:
-        target_labels.append(f"AI/{final_category.capitalize()}")
-
-    if decision_status == "NEEDS_REVIEW":
-        target_labels.append("AI/Review")
+    target_labels = target_labels_for(
+        final_priority, final_category, final_action, decision_status
+    )
 
     return {
         "email_id": email_obj.id,

@@ -109,6 +109,34 @@ def fetch_email_details(service: Resource, message_id: str) -> Dict[str, Any]:
     }
 
 def fetch_recent_message_ids(service: Resource, max_results: int = 50, query: str = "") -> List[str]:
-    response = service.users().messages().list(userId='me', maxResults=max_results, q=query).execute()
-    messages = response.get('messages', [])
-    return [m['id'] for m in messages]
+    """Fetch up to max_results message IDs using pagination (nextPageToken).
+    Set max_results=0 to fetch ALL messages (use with caution on large inboxes).
+    """
+    all_ids: List[str] = []
+    page_token: Optional[str] = None
+
+    while True:
+        # Per-page limit: max 500 per request (Gmail API cap)
+        batch_size = min(500, max_results - len(all_ids)) if max_results > 0 else 500
+
+        kwargs: Dict[str, Any] = {
+            'userId': 'me',
+            'maxResults': batch_size,
+            'q': query,
+        }
+        if page_token:
+            kwargs['pageToken'] = page_token
+
+        response = service.users().messages().list(**kwargs).execute()
+        messages = response.get('messages', [])
+        all_ids.extend(m['id'] for m in messages)
+
+        page_token = response.get('nextPageToken')
+
+        # Stop if no more pages or we've hit the limit
+        if not page_token:
+            break
+        if max_results > 0 and len(all_ids) >= max_results:
+            break
+
+    return all_ids[:max_results] if max_results > 0 else all_ids

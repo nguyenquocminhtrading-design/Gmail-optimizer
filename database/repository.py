@@ -1,10 +1,12 @@
 import datetime
+import json
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, desc, or_, and_
 from typing import List, Optional, Dict, Any
 from database.models import (
     EmailModel, ClassificationModel, DeadlineModel,
-    ActionModel, AttachmentModel, UserFeedbackModel, RuleModel, SyncStateModel
+    ActionModel, AttachmentModel, UserFeedbackModel, RuleModel, SyncStateModel,
+    ChatSessionModel, ChatMessageModel
 )
 
 class EmailRepository:
@@ -14,8 +16,20 @@ class EmailRepository:
         return db.query(EmailModel).filter(EmailModel.gmail_message_id == gmail_id).first()
 
     @staticmethod
+    def get_all_gmail_ids(db: Session) -> set:
+        """Return a set of all gmail_message_id already stored in the database.
+        Used during sync to skip emails that have already been processed.
+        """
+        rows = db.query(EmailModel.gmail_message_id).all()
+        return {row[0] for row in rows}
+
+    @staticmethod
     def create_email(db: Session, email_data: dict) -> EmailModel:
-        email = EmailModel(**email_data)
+        allowed = {c.name for c in EmailModel.__table__.columns}
+        payload = {k: v for k, v in email_data.items() if k in allowed}
+        if "has_attachments" not in payload:
+            payload["has_attachments"] = bool(email_data.get("attachments"))
+        email = EmailModel(**payload)
         db.add(email)
         db.commit()
         db.refresh(email)
@@ -232,3 +246,126 @@ class EmailRepository:
     @staticmethod
     def get_all_rules(db: Session) -> List[RuleModel]:
         return db.query(RuleModel).order_by(desc(RuleModel.created_at)).all()
+
+    @staticmethod
+    def get_email_by_id(db: Session, email_id: int) -> Optional[EmailModel]:
+        return (
+            db.query(EmailModel)
+            .options(
+                joinedload(EmailModel.classification),
+                joinedload(EmailModel.deadlines),
+                joinedload(EmailModel.actions),
+            )
+            .filter(EmailModel.id == email_id)
+            .first()
+        )
+
+    @staticmethod
+    def search_emails(
+        db: Session,
+        query: Optional[str] = None,
+        priority: Optional[str] = None,
+        category: Optional[str] = None,
+        action: Optional[str] = None,
+        sender: Optional[str] = None,
+        important_only: bool = False,
+        needs_review: bool = False,
+        limit: int = 15,
+    ) -> List[EmailModel]:
+        q = (
+            db.query(EmailModel)
+            .outerjoin(ClassificationModel)
+            .options(
+                joinedload(EmailModel.classification),
+                joinedload(EmailModel.deadlines),
+                joinedload(EmailModel.actions),
+            )
+        )
+        if query:
+            like = f"%{query.strip()}%"
+            q = q.filter(
+                or_(
+                    EmailModel.subject.ilike(like),
+                    EmailModel.sender_email.ilike(like),
+                    EmailModel.sender_name.ilike(like),
+                    EmailModel.normalized_body.ilike(like),
+                )
+            )
+        if sender:
+            like_sender = f"%{sender.strip()}%"
+            q = q.filter(
+                or_(
+                    EmailModel.sender_email.ilike(like_sender),
+                    EmailModel.sender_name.ilike(like_sender),
+                )
+            )
+        if priority:
+            q = q.filter(ClassificationModel.priority == priority.upper())
+        if category:
+            q = q.filter(ClassificationModel.category == category.upper())
+        if action:
+            q = q.filter(ClassificationModel.action_status == action.upper())
+        if important_only:
+            q = q.filter(ClassificationModel.priority.in_(["URGENT", "IMPORTANT"]))
+        if needs_review:
+            q = q.filter(ClassificationModel.status == "NEEDS_REVIEW")
+
+        return q.order_by(desc(EmailModel.date_received)).limit(limit).all()
+
+    @staticmethod
+    def get_or_create_chat_session(db: Session, session_id: str) -> ChatSessionModel:
+        session = db.query(ChatSessionModel).filter(ChatSessionModel.id == session_id).first()
+        if session:
+            return session
+        session = ChatSessionModel(id=session_id, pending_email_ids="[]")
+        db.add(session)
+        db.commit()
+        db.refresh(session)
+        return session
+
+    @staticmethod
+    def add_chat_message(
+        db: Session,
+        session_id: str,
+        role: str,
+        content: str,
+        cards: Optional[List[Dict[str, Any]]] = None,
+    ) -> ChatMessageModel:
+        msg = ChatMessageModel(
+            session_id=session_id,
+            role=role,
+            content=content,
+            cards_json=json.dumps(cards) if cards is not None else None,
+        )
+        db.add(msg)
+        db.commit()
+        db.refresh(msg)
+        return msg
+
+    @staticmethod
+    def get_chat_messages(db: Session, session_id: str, limit: int = 20) -> List[ChatMessageModel]:
+        return (
+            db.query(ChatMessageModel)
+            .filter(ChatMessageModel.session_id == session_id)
+            .order_by(ChatMessageModel.created_at.asc())
+            .limit(limit)
+            .all()
+        )
+
+    @staticmethod
+    def set_pending_email_ids(db: Session, session_id: str, email_ids: List[int]) -> None:
+        session = EmailRepository.get_or_create_chat_session(db, session_id)
+        session.pending_email_ids = json.dumps(email_ids)
+        session.updated_at = datetime.datetime.utcnow()
+        db.commit()
+
+    @staticmethod
+    def get_pending_email_ids(db: Session, session_id: str) -> List[int]:
+        session = db.query(ChatSessionModel).filter(ChatSessionModel.id == session_id).first()
+        if not session or not session.pending_email_ids:
+            return []
+        try:
+            raw = json.loads(session.pending_email_ids)
+            return [int(x) for x in raw]
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return []

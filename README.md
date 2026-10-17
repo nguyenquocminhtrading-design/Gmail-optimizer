@@ -1,3 +1,5 @@
+ 
+
 # Gmail Intelligence & Interactive Email Classification System
 
 A production-grade, local-first / server-deployable Gmail automation & email intelligence system built with **FastAPI**, **SQLite**, **OAuth 2.0 Web Flow**, and a **Multi-Layer Hybrid Intelligence Classifier**.
@@ -79,22 +81,27 @@ GEMINI_API_KEY=your_gemini_api_key_here
 ## 3. Running Locally
 
 ### Step 1: Install Dependencies
+
 ```bash
 pip install -r requirements.txt
 ```
 
 ### Step 2: Run Unit Tests
+
 ```bash
 python -m pytest
 ```
 
 ### Step 3: Start FastAPI Application
+
 ```bash
 python main.py
 ```
+
 Open your browser at `http://localhost:8000`. Click **Sign in with Google OAuth** to authenticate your Gmail account.
 
 ### Step 4: Run Background Sync via CLI
+
 ```bash
 python sync_cli.py
 ```

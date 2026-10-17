@@ -33,6 +33,7 @@ def create_oauth_flow(state: str = None) -> Flow:
         state=state
     )
     flow.redirect_uri = settings.GMAIL_REDIRECT_URI
+    flow.autogenerate_code_verifier = False
     return flow
 
 def get_authorization_url(state: str = None) -> tuple[str, str]:
