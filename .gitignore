@@ -1,6 +1,7 @@
 # Environment & Secrets
 .env
 credentials.json
+client_secret_*.json
 token.json
 
 # SQLite Database & Logs

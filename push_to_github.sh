@@ -46,8 +46,16 @@ if [ -z "$COMMIT_MSG" ]; then
     COMMIT_MSG="Initial commit: Gmail Intelligence System"
 fi
 
-echo "➕ Staging files..."
-git add .
+echo "➕ Staging files (respecting .gitignore)..."
+git add -A
+
+echo "🔍 Scanning staged files for secrets..."
+if git diff --cached --name-only | grep -Ei '(^|/)client_secret_.*\.json$|(^|/)credentials\.json$|(^|/)\.env$|(^|/)token\.json$|\.db$'; then
+  echo "❌ Sensitive file detected in staged changes. Commit aborted."
+  echo "   Thêm pattern vào .gitignore rồi chạy lại script."
+  git reset -q
+  exit 1
+fi
 
 echo "📝 Committing changes..."
 git commit -m "$COMMIT_MSG"
